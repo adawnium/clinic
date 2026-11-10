@@ -1,0 +1,325 @@
+openapi: 3.1.0
+info:
+  title: Clinic — Patients and appointments
+  version: 1.0.0
+  description: >
+    First service of the general practice clinic (day 1). Synthetic data.
+    The contract is written before the code; the service must conform to it.
+    Day 1: the Patients resource is provided as a complete example; appointments are yours to write.
+servers:
+  - url: http://localhost:8000
+tags:
+  - name: patients
+  - name: appointments
+
+paths:
+  /patients:
+    get:
+      tags: [patients]
+      summary: List patients
+      operationId: listPatients
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: lastName
+          in: query
+          description: Case-insensitive filter on the last name
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        "200":
+          description: A page of patients
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PatientPage" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "422": { $ref: "#/components/responses/InvalidData" }
+    post:
+      tags: [patients]
+      summary: Create a patient
+      operationId: createPatient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientCreate" }
+      responses:
+        "201":
+          description: Patient created
+          headers:
+            Location:
+              description: URL of the created patient
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Patient" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "422": { $ref: "#/components/responses/InvalidData" }
+
+  /patients/{patientId}:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    get:
+      tags: [patients]
+      summary: Read a patient
+      operationId: readPatient
+      responses:
+        "200":
+          description: The patient
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Patient" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [patients]
+      summary: Replace a patient
+      operationId: replacePatient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientCreate" }
+      responses:
+        "200":
+          description: The updated patient
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Patient" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/InvalidData" }
+    delete:
+      tags: [patients]
+      summary: Delete a patient
+      operationId: deletePatient
+      description: Refused if the patient has upcoming appointments.
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  
+  /patients/{patientId}/appointments:
+    parameters:
+      - $ref: "#/components/parameters/PatientId"
+    get:
+      tags: [appointments]
+      summary: List a patient's appointments
+      operationId: listPatientAppointments
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/After"
+      responses:
+        "200":
+          description: A page of a patient's appointments sorted by start
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PatientAppointmentsPage" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/InvalidData" }
+    post:
+      tags: [appointments]
+      summary: Create a patient's appointment
+      operationId: createPatientAppointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PatientAppointmentCreate" }
+      responses:
+        "201":
+          description: Patient's appointment created
+          headers:
+            Location:
+              description: URL of the created patient's appointment
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PatientAppointment" }
+        "400": { $ref: "#/components/responses/InvalidRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Overlap" }
+        "422": { $ref: "#/components/responses/InvalidData" }
+
+  /appointments/{appointmentId}:
+    parameters:
+      - $ref: "#/components/parameters/AppointmentId"
+    get:
+      tags: [appointments]
+      summary: Read an appointment
+      operationId: readAppointment
+      responses:
+        "200":
+          description: The appointment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PatientAppointment" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [appointments]
+      summary: Delete an appointment
+      operationId: deleteAppointment
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  parameters:
+    PatientId:
+      name: patientId
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/Identifier" }
+    AppointmentId:
+      name: appointmentId
+      in: path
+      required: true
+      schema: { $ref: "#/components/schemas/AppointmentIdentifier" }
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page
+      schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor returned by the previous page
+      schema: { type: string, minLength: 1, maxLength: 200 }
+    After:
+      name: after
+      in: query
+      description: Filter appointments starting after this date-time
+      schema: { type: string, format: date-time }
+
+  schemas:
+    Identifier:
+      type: string
+      description: Opaque identifier, assigned by the server
+      pattern: "^[a-z]+_[0-9a-f]{8}$"
+      examples: ["p_7f3a1c2e"]
+
+    AppointmentIdentifier:
+      type: string
+      description: Opaque identifier for appointments, assigned by the server
+      pattern: "^r_[0-9a-f]{8}$"
+      examples: ["r_7f3a1c2e"]
+
+    PatientCreate:
+      type: object
+      required: [lastName, firstName, birthDate]
+      additionalProperties: false
+      properties:
+        lastName: { type: string, minLength: 1, maxLength: 100 }
+        firstName: { type: string, minLength: 1, maxLength: 100 }
+        birthDate: { type: string, format: date, description: "In the past, today included" }
+        phone: { type: string, pattern: "^\\+?[0-9 ]{6,20}$", examples: ["+33 6 12 34 56 78"] }
+
+    Patient:
+      type: object
+      description: >
+        The representation of a patient. The same fields as at creation, plus the identifier and the
+        links, both assigned by the server.
+      required: [id, lastName, firstName, birthDate, links]
+      properties:
+        id: { $ref: "#/components/schemas/Identifier" }
+        lastName: { type: string, minLength: 1, maxLength: 100 }
+        firstName: { type: string, minLength: 1, maxLength: 100 }
+        birthDate: { type: string, format: date }
+        phone: { type: string, pattern: "^\\+?[0-9 ]{6,20}$", examples: ["+33 6 12 34 56 78"] }
+        links:
+          type: object
+          required: [appointments]
+          properties:
+            appointments: { type: string, description: "URL of the patient's appointment list" }
+
+    PatientPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Patient" }
+        nextCursor: { type: ["string", "null"], description: "Absent or null: last page" }
+
+    PatientAppointmentCreate:
+      type: object
+      required: [start, durationMinutes]
+      additionalProperties: false
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Start date-time with time zone; year between 1900 and 2100
+        durationMinutes:
+          type: integer
+          minimum: 5
+          maximum: 240
+        reason:
+          type: string
+          maxLength: 200
+
+    PatientAppointment:
+      type: object
+      description: The representation of an appointment.
+      required: [id, patientId, start, durationMinutes]
+      properties:
+        id: { $ref: "#/components/schemas/AppointmentIdentifier" }
+        patientId: { $ref: "#/components/schemas/Identifier" }
+        start: { type: string, format: date-time }
+        durationMinutes: { type: integer, minimum: 5, maximum: 240 }
+        reason: { type: string, maxLength: 200 }
+
+    PatientAppointmentsPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PatientAppointment" }
+        nextCursor: { type: ["string", "null"], description: "Absent or null: last page" }
+
+    Problem:
+      type: object
+      description: Problem Details, RFC 9457
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        errors:
+          type: array
+          description: Offending fields, for a validation error
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+  responses:
+    InvalidRequest:
+      description: Malformed request
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    InvalidData:
+      description: Well-formed but invalid data
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Conflict:
+      description: Conflict with current state
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    Overlap:
+      description: The slot overlaps an existing appointment of the clinic
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }

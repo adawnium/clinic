@@ -1,0 +1,58 @@
+User Stories.txt
+
+===
+
+Scenario: a free slot is booked
+  Given patient Léa Martin exists
+  And nothing is booked on 2026-03-14 between 09:30 and 10:00
+  When I book 09:30 for 30 minutes for Léa Martin
+  Then the appointment is created
+  And it shows in her upcoming appointments
+
+Scenario: an overlapping slot is refused
+  Given an appointment on 2026-03-14 from 09:30 to 10:00
+  When I book 09:45 for 30 minutes, for any patient
+  Then the booking is refused as a conflict
+  And the agenda is unchanged
+
+given in the repo
+  
+  ===
+
+Scenario: a slot is booked on top of another spot :
+    Given a patient A exists, and has booked an appointment on time T,
+    When another Patient B books an appointment for the same time T,
+    Then the appointment of patient B is not created as it makes a conflict.
+    The agenda is unchanged.
+
+Scenario : a slot is booked for the past :
+    Given a patient A exists, and books an appointment for a time T,
+    When the time T is before the current date,
+    Then the appointment is not created.
+    The agenda remains unchanged.
+
+Scenario : a slot is booked when the clinic is closed :
+
+    Given a patient A exists, and books an appointment for a time T,
+    When the time T is not within opening hours of the clinic,
+    Then the booking is refused 
+    and the agenda is unchanged.
+
+Scenario : someone wants to free up a spot (s)he booked 
+
+    Given Patient A that has booked an appointment on time T,
+    When this person cannot attend to said appointment on time T,
+    Then the appointment of Patient A is deleted and its time becomes available for another appointment.
+
+Scenario : someone wants to free up a spot (s)he booked but has not booked any spot
+    Given Patient A that has not booked an appointment,
+    When (s)he wants to free up the spot,
+    Then the cancelling is refused, 
+    And the agenda remains unchanged.
+
+Scenario : someone wants to reschedule his/her appointment.
+    Given Patient A that has booked an appointment on time T,
+    When Patient A wants to reschedule his appointment,
+    Then an appointment on time T' is created (assuming no one has an appointment on T')
+    And appointment on time T is deleted.
+    Agenda is updated.

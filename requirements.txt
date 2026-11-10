@@ -1,0 +1,4 @@
+# One virtual environment for the whole lab, at the repo root:
+#   python -m venv .venv && . .venv/bin/activate      (Windows: .venv\Scripts\activate)
+#   pip install -r requirements.txt
+-r services/clinic/requirements-dev.txt

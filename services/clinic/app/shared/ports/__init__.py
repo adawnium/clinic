@@ -1,0 +1,1 @@
+"""Shared ports: the clock."""

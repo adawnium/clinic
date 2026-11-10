@@ -1,0 +1,27 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+# Dependencies point inward. `lint-imports` is red when a rule is broken; add your feature to the lists.
+[tool.importlinter]
+root_package = "app"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Layers: adapters -> application -> ports -> domain, in each feature and in shared"
+type = "layers"
+layers = ["adapters", "(application)", "ports", "domain"]
+containers = ["app.shared", "app.patients"]
+exhaustive = false
+
+[[tool.importlinter.contracts]]
+name = "The domain, the ports and the use cases know no framework and no adapter"
+type = "forbidden"
+source_modules = ["app.shared.domain", "app.shared.ports", "app.patients.domain", "app.patients.ports", "app.patients.application"]
+forbidden_modules = ["fastapi", "pydantic", "sqlalchemy", "starlette", "app.shared.adapters", "app.patients.adapters"]
+
+[tool.lint-imports.contracts.appointments]
+domain = ["app.shared.domain"]
+ports = ["app.appointments.domain", "app.shared.domain"]
+application = ["app.appointments.domain", "app.appointments.ports", "app.shared.domain", "app.shared.ports"]
+adapters = ["app.appointments.domain", "app.appointments.ports", "app.appointments.application", "app.shared"]
